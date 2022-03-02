@@ -465,6 +465,7 @@ class SignalGroup(object):
     name = attr.ib()  # type: str
     id = attr.ib()  # type: int
     signals = attr.ib(factory=list, repr=False)  # type: typing.MutableSequence[Signal]
+    e2e_trans = attr.ib(default=None)
 
     def add_signal(self, signal):  # type: (Signal) -> None
         """Add a Signal to SignalGroup.
@@ -788,7 +789,7 @@ class Pdu(object):
         """
         self.signals.append(signal)
         return self.signals[len(self.signals) - 1]
-    def add_signal_group(self, Name, Id, signalNames):
+    def add_signal_group(self, Name, Id, signalNames, e2e_trans=None):
         # type: (str, int, typing.Sequence[str]) -> None
         """Add new SignalGroup to the Frame. Add given signals to the group.
 
@@ -796,7 +797,7 @@ class Pdu(object):
         :param int Id: Group id
         :param list of str signalNames: list of Signal names to add. Non existing names are ignored.
         """
-        newGroup = SignalGroup(Name, Id)
+        newGroup = SignalGroup(Name, Id, e2e_trans=e2e_trans)
         self.signalGroups.append(newGroup)
         for signal in signalNames:
             signal = signal.strip()
@@ -996,7 +997,7 @@ class Frame(object):
 
         return iter(self.signals)
 
-    def add_signal_group(self, Name, Id, signalNames):
+    def add_signal_group(self, Name, Id, signalNames, e2e_trans=None):
         # type: (str, int, typing.Sequence[str]) -> None
         """Add new SignalGroup to the Frame. Add given signals to the group.
 
@@ -1004,7 +1005,7 @@ class Frame(object):
         :param int Id: Group id
         :param list of str signalNames: list of Signal names to add. Non existing names are ignored.
         """
-        newGroup = SignalGroup(Name, Id)
+        newGroup = SignalGroup(Name, Id, e2e_trans=e2e_trans)
         self.signalGroups.append(newGroup)
         for signal in signalNames:
             signal = signal.strip()
@@ -1516,7 +1517,7 @@ class Frame(object):
                 decoded_values[signal.name] = decoded[signal.name]
             return decoded_values
 
-        elif self.is_multiplexed:
+        elif self.is_multiplexed and not self.is_pdu_container:
             decoded_values = dict()
             # find multiplexer and decode only its value:
 
@@ -1817,8 +1818,8 @@ class CanMatrix(object):
                 for signal in frame.signals:
                     if signal_define in signal.attributes:
                         break
-            else:
-                defines_to_delete.add(signal_define)
+                else:
+                    defines_to_delete.add(signal_define)
         for element in defines_to_delete:
             del self.signal_defines[element]
 
